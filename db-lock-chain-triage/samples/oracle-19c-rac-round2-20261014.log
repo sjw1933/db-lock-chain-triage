@@ -1,0 +1,231 @@
+[2026-10-14 17:45:37] == 场景 1a：不同行串成的链，结束中间的 B
+
+CLIENT_IDENT	    SID    SERIAL# STATUS   EVENT			     BLOCKING_SESSION SECONDS_IN_WAIT
+------------ ---------- ---------- -------- -------------------------------- ---------------- ---------------
+locklab-A	    793      54914 INACTIVE SQL*Net message from client 				   10
+locklab-B	    823      27449 ACTIVE   enq: TX - row lock contention				    8
+locklab-C	    827      58139 ACTIVE   enq: TX - row lock contention				    6
+[2026-10-14 17:45:48] -- lstx 同款 SQL（gv$ 改为本实例 v$）
+
+  WAIT_SID WAIT_USER  OBJECT_NAME	BLOCK_SID BLOCK_USER XID
+---------- ---------- ---------------- ---------- ---------- ------------------------------------------------------------------------------------------------------------------------------
+       823 SYS	      LOCK_LAB_ORDERS	      793 SYS	     XID=7.2.18241
+       827 SYS	      LOCK_LAB_ORDERS	      823 SYS	     XID=10.28.18252
+
+KILL
+------------------------------------------------------------
+alter system kill session '823,27449' immediate;
+alter system kill session '793,54914' immediate;
+[2026-10-14 17:45:52] -- 结束 locklab-B（sid=823 serial#=27449）
+
+CLIENT_IDENT	    SID    SERIAL# STATUS   EVENT			     BLOCKING_SESSION SECONDS_IN_WAIT
+------------ ---------- ---------- -------- -------------------------------- ---------------- ---------------
+locklab-A	    793      54914 INACTIVE SQL*Net message from client 				   20
+locklab-C	    827      58139 INACTIVE SQL*Net message from client 				    5
+
+	ID STATUS
+---------- --------------------
+	 1 new
+	 2 new
+[2026-10-14 17:46:02] == 场景 1b：不同行串成的链，结束链头 A
+
+CLIENT_IDENT	    SID    SERIAL# STATUS   EVENT			     BLOCKING_SESSION SECONDS_IN_WAIT
+------------ ---------- ---------- -------- -------------------------------- ---------------- ---------------
+locklab-A	    793      63911 INACTIVE SQL*Net message from client 				   10
+locklab-B	    827      35411 ACTIVE   enq: TX - row lock contention				    8
+locklab-C	    762      36489 ACTIVE   enq: TX - row lock contention				    6
+[2026-10-14 17:46:15] -- 结束 locklab-A（sid=793 serial#=63911）
+
+CLIENT_IDENT	    SID    SERIAL# STATUS   EVENT			     BLOCKING_SESSION SECONDS_IN_WAIT
+------------ ---------- ---------- -------- -------------------------------- ---------------- ---------------
+locklab-B	    827      35411 INACTIVE SQL*Net message from client 				    6
+locklab-C	    762      36489 ACTIVE   enq: TX - row lock contention		  827		   15
+
+	ID STATUS
+---------- --------------------
+	 1 new
+	 2 new
+[2026-10-14 17:46:25] == 场景 2a：同一行排队，结束 B
+
+CLIENT_IDENT	    SID    SERIAL# STATUS   EVENT			     BLOCKING_SESSION SECONDS_IN_WAIT
+------------ ---------- ---------- -------- -------------------------------- ---------------- ---------------
+locklab-A	    823      63968 INACTIVE SQL*Net message from client 				   10
+locklab-B	    827      59218 ACTIVE   enq: TX - row lock contention		  823		    8
+locklab-C	    762      26581 ACTIVE   enq: TX - row lock contention				    6
+[2026-10-14 17:46:36] -- lstx 同款 SQL（gv$ 改为本实例 v$）
+
+  WAIT_SID WAIT_USER  OBJECT_NAME	BLOCK_SID BLOCK_USER XID
+---------- ---------- ---------------- ---------- ---------- ------------------------------------------------------------------------------------------------------------------------------
+       762 SYS	      LOCK_LAB_ORDERS	      823 SYS	     XID=6.26.23500
+       827 SYS	      LOCK_LAB_ORDERS	      823 SYS	     XID=6.26.23500
+
+KILL
+------------------------------------------------------------
+alter system kill session '823,63968' immediate;
+[2026-10-14 17:46:39] -- 结束 locklab-B（sid=827 serial#=59218）
+
+CLIENT_IDENT	    SID    SERIAL# STATUS   EVENT			     BLOCKING_SESSION SECONDS_IN_WAIT
+------------ ---------- ---------- -------- -------------------------------- ---------------- ---------------
+locklab-A	    823      63968 INACTIVE SQL*Net message from client 				   20
+locklab-C	    762      26581 ACTIVE   enq: TX - row lock contention		  823		   17
+
+	ID STATUS
+---------- --------------------
+	 1 new
+	 2 new
+[2026-10-14 17:46:49] == 场景 2b：同一行排队，结束链头 A
+
+CLIENT_IDENT	    SID    SERIAL# STATUS   EVENT			     BLOCKING_SESSION SECONDS_IN_WAIT
+------------ ---------- ---------- -------- -------------------------------- ---------------- ---------------
+locklab-A	    827      32947 INACTIVE SQL*Net message from client 				   10
+locklab-B	    762      31088 ACTIVE   enq: TX - row lock contention		  827		    8
+locklab-C	    814      35089 ACTIVE   enq: TX - row lock contention				    6
+[2026-10-14 17:47:02] -- 结束 locklab-A（sid=827 serial#=32947）
+
+CLIENT_IDENT	    SID    SERIAL# STATUS   EVENT			     BLOCKING_SESSION SECONDS_IN_WAIT
+------------ ---------- ---------- -------- -------------------------------- ---------------- ---------------
+locklab-B	    762      31088 INACTIVE SQL*Net message from client 				    6
+locklab-C	    814      35089 ACTIVE   enq: TX - row lock contention		  762		    6
+
+	ID STATUS
+---------- --------------------
+	 1 new
+	 2 new
+[2026-10-14 17:47:12] == 清理
+
+PL/SQL procedure successfully completed.
+
+
+1 row updated.
+
+
+Rollback complete.
+
+
+PL/SQL procedure successfully completed.
+
+
+1 row updated.
+
+rollback
+       *
+ERROR at line 1:
+ORA-03135: connection lost contact
+Process ID: 3671
+Session ID: 793 Serial number: 63911
+
+
+
+PL/SQL procedure successfully completed.
+
+
+1 row updated.
+
+
+Rollback complete.
+
+
+PL/SQL procedure successfully completed.
+
+
+1 row updated.
+
+rollback
+*
+ERROR at line 1:
+ORA-03135: connection lost contact
+Process ID: 3992
+Session ID: 827 Serial number: 32947
+
+
+
+PL/SQL procedure successfully completed.
+
+
+1 row updated.
+
+update TEST01.LOCK_LAB_ORDERS set status = 'B' where id = 1
+              *
+ERROR at line 1:
+ORA-03113: end-of-file on communication channel
+Process ID: 3484
+Session ID: 823 Serial number: 27449
+
+
+ERROR:
+ORA-03114: not connected to ORACLE
+
+
+
+PL/SQL procedure successfully completed.
+
+
+1 row updated.
+
+
+1 row updated.
+
+
+Rollback complete.
+
+
+PL/SQL procedure successfully completed.
+
+update TEST01.LOCK_LAB_ORDERS set status = 'B' where id = 1
+*
+ERROR at line 1:
+ORA-03113: end-of-file on communication channel
+Process ID: 3808
+Session ID: 827 Serial number: 59218
+
+
+ERROR:
+ORA-03114: not connected to ORACLE
+
+
+
+PL/SQL procedure successfully completed.
+
+
+1 row updated.
+
+
+Rollback complete.
+
+
+PL/SQL procedure successfully completed.
+
+
+1 row updated.
+
+
+Rollback complete.
+
+
+PL/SQL procedure successfully completed.
+
+
+1 row updated.
+
+
+Rollback complete.
+
+
+PL/SQL procedure successfully completed.
+
+
+1 row updated.
+
+
+Rollback complete.
+
+
+PL/SQL procedure successfully completed.
+
+
+1 row updated.
+
+
+Rollback complete.
+
+[2026-10-14 17:47:13] 完成，完整输出在 locklab2_20261014_174535.log

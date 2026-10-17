@@ -1,0 +1,7 @@
+2026-10-14 18:12:55.802 CST [658918] LOG:  process 658918 still waiting for ShareLock on transaction 1674 after 31001.489 ms
+2026-10-14 18:12:55.802 CST [658918] DETAIL:  Process holding the lock: 658916. Wait queue: 658918.
+2026-10-14 18:12:55.802 CST [658918] CONTEXT:  while updating tuple (0,1) in relation "locklab_orders"
+2026-10-14 18:12:55.802 CST [658918] STATEMENT:  update locklab_orders set status = 'B' where id = 1;
+2026-10-14 18:12:57.827 CST [658917] LOG:  process 658917 still waiting for ExclusiveLock on tuple (0,1) of relation 19034 of database 13994 after 31025.025 ms
+2026-10-14 18:12:57.827 CST [658917] DETAIL:  Process holding the lock: 658918. Wait queue: 658917.
+2026-10-14 18:12:57.827 CST [658917] STATEMENT:  update locklab_orders set status = 'C' where id = 1;

@@ -1,0 +1,182 @@
+[2026-10-14 18:12:22] == 环境：KingbaseES V009R002C014，主进程 677145，日志 /home/kingbaseo/data/sys_log/kingbase-2026-10-14_000000.log
+ log_lock_waits 
+----------------
+ off
+(1 row)
+
+ deadlock_timeout 
+------------------
+ 1s
+(1 row)
+
+ lock_timeout 
+--------------
+ 0
+(1 row)
+
+[2026-10-14 18:12:22] 实验表所在 schema：public
+[2026-10-14 18:12:22] == 场景 1a：同一行排队 A <- B <- C，结束中间的 B
+[2026-10-14 18:13:02] -- 证据一：主机进程表
+    PID     ELAPSED COMMAND
+ 658916       00:40 kingbase: system test 127.0.0.1(17956) idle in transaction
+ 658917       00:40 kingbase: system test 127.0.0.1(17972) UPDATE waiting
+ 658918       00:40 kingbase: system test 127.0.0.1(17974) UPDATE waiting
+[2026-10-14 18:13:02] -- 证据二：库内视图（lock_evidence.sql）
+ waiting_lock_count 
+--------------------
+                  2
+(1 row)
+
+ blocked_pid | blocked_app |                    blocked_query                     | blocking_pid | blocking_app |                    blocking_query                    
+-------------+-------------+------------------------------------------------------+--------------+--------------+------------------------------------------------------
+      658918 | locklab-B   | update locklab_orders set status = 'B' where id = 1; |       658916 | locklab-A    | update locklab_orders set status = 'A' where id = 1;
+      658917 | locklab-C   | update locklab_orders set status = 'C' where id = 1; |       658918 | locklab-B    | update locklab_orders set status = 'B' where id = 1;
+(2 rows)
+
+  pid   | application_name |        state        |         xact_duration         | wait_event_type |  wait_event   |                        query                         
+--------+------------------+---------------------+-------------------------------+-----------------+---------------+------------------------------------------------------
+ 658916 | locklab-A        | idle in transaction | +000000000 00:00:40.049697000 | Client          | ClientRead    | update locklab_orders set status = 'A' where id = 1;
+ 658918 | locklab-B        | active              | +000000000 00:00:38.062414000 | Lock            | transactionid | update locklab_orders set status = 'B' where id = 1;
+ 658917 | locklab-C        | active              | +000000000 00:00:36.060645000 | Lock            | tuple         | update locklab_orders set status = 'C' where id = 1;
+(3 rows)
+
+        state        | connections 
+---------------------+-------------
+ active              |           3
+ idle in transaction |           1
+(2 rows)
+
+[2026-10-14 18:13:02] -- 证据三：服务器日志（2026-10-14 18:12:22 之后的 still waiting / 终止类记录）
+2026-10-14 18:12:55.802 CST [658918] LOG:  process 658918 still waiting for ShareLock on transaction 1674 after 31001.489 ms
+2026-10-14 18:12:55.802 CST [658918] DETAIL:  Process holding the lock: 658916. Wait queue: 658918.
+2026-10-14 18:12:55.802 CST [658918] CONTEXT:  while updating tuple (0,1) in relation "locklab_orders"
+2026-10-14 18:12:55.802 CST [658918] STATEMENT:  update locklab_orders set status = 'B' where id = 1;
+2026-10-14 18:12:57.827 CST [658917] LOG:  process 658917 still waiting for ExclusiveLock on tuple (0,1) of relation 19034 of database 13994 after 31025.025 ms
+2026-10-14 18:12:57.827 CST [658917] DETAIL:  Process holding the lock: 658918. Wait queue: 658917.
+2026-10-14 18:12:57.827 CST [658917] STATEMENT:  update locklab_orders set status = 'C' where id = 1;
+[2026-10-14 18:13:02] -- 结束 locklab-B（pid=658918）
+ sys_terminate_backend 
+-----------------------
+ t
+(1 row)
+
+[2026-10-14 18:13:05] -- 结束后的阻塞关系（sys_blocking_pids 视角之外，直接看阻塞对）
+ blocked_app |  pid   |        state        | wait_event_type |  wait_event   | blocked_by 
+-------------+--------+---------------------+-----------------+---------------+------------
+ locklab-A   | 658916 | idle in transaction | Client          | ClientRead    | 
+ locklab-C   | 658917 | active              | Lock            | transactionid | locklab-A
+(2 rows)
+
+ id | status 
+----+--------
+  1 | new
+  2 | new
+(2 rows)
+
+[2026-10-14 18:13:06] == 场景 1b：同一行排队，结束链头 A
+[2026-10-14 18:13:14] -- 结束后的阻塞关系（sys_blocking_pids 视角之外，直接看阻塞对）
+ blocked_app |  pid   |        state        | wait_event_type |  wait_event   | blocked_by 
+-------------+--------+---------------------+-----------------+---------------+------------
+ locklab-A   | 659229 | idle in transaction | Client          | ClientRead    | 
+ locklab-B   | 659230 | active              | Lock            | transactionid | locklab-A
+ locklab-C   | 659232 | active              | Lock            | tuple         | locklab-B
+(3 rows)
+
+[2026-10-14 18:13:14] -- 结束 locklab-A（pid=659229）
+ sys_terminate_backend 
+-----------------------
+ t
+(1 row)
+
+[2026-10-14 18:13:17] -- 结束后的阻塞关系（sys_blocking_pids 视角之外，直接看阻塞对）
+ blocked_app |  pid   |        state        | wait_event_type |  wait_event   | blocked_by 
+-------------+--------+---------------------+-----------------+---------------+------------
+ locklab-B   | 659230 | idle in transaction | Client          | ClientRead    | 
+ locklab-C   | 659232 | active              | Lock            | transactionid | locklab-B
+(2 rows)
+
+ id | status 
+----+--------
+  1 | new
+  2 | new
+(2 rows)
+
+[2026-10-14 18:13:18] == 场景 2：不同行的链 A(行1) <- B(持行2, 等行1) <- C(等行2)，结束中间的 B
+[2026-10-14 18:13:26] -- 结束后的阻塞关系（sys_blocking_pids 视角之外，直接看阻塞对）
+ blocked_app |  pid   |        state        | wait_event_type |  wait_event   | blocked_by 
+-------------+--------+---------------------+-----------------+---------------+------------
+ locklab-A   | 659337 | idle in transaction | Client          | ClientRead    | 
+ locklab-B   | 659338 | active              | Lock            | transactionid | locklab-A
+ locklab-C   | 659339 | active              | Lock            | transactionid | locklab-B
+(3 rows)
+
+[2026-10-14 18:13:26] -- 结束 locklab-B（pid=659338）
+ sys_terminate_backend 
+-----------------------
+ t
+(1 row)
+
+[2026-10-14 18:13:29] -- 结束后的阻塞关系（sys_blocking_pids 视角之外，直接看阻塞对）
+ blocked_app |  pid   |        state        | wait_event_type | wait_event | blocked_by 
+-------------+--------+---------------------+-----------------+------------+------------
+ locklab-A   | 659337 | idle in transaction | Client          | ClientRead | 
+ locklab-C   | 659339 | idle in transaction | Client          | ClientRead | 
+(2 rows)
+
+ id | status 
+----+--------
+  1 | new
+  2 | new
+(2 rows)
+
+[2026-10-14 18:13:30] == 清理
+SET
+BEGIN
+UPDATE 1
+ROLLBACK
+SET
+BEGIN
+UPDATE 1
+FATAL:  terminating connection due to administrator command
+server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+connection to server was lost
+SET
+BEGIN
+UPDATE 1
+ROLLBACK
+SET
+BEGIN
+FATAL:  terminating connection due to administrator command
+CONTEXT:  while updating tuple (0,1) in relation "locklab_orders"
+server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+connection to server was lost
+SET
+BEGIN
+UPDATE 1
+ROLLBACK
+SET
+BEGIN
+UPDATE 1
+FATAL:  terminating connection due to administrator command
+CONTEXT:  while updating tuple (0,1) in relation "locklab_orders"
+server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+connection to server was lost
+SET
+BEGIN
+UPDATE 1
+ROLLBACK
+SET
+BEGIN
+UPDATE 1
+ROLLBACK
+SET
+BEGIN
+UPDATE 1
+ROLLBACK
+[2026-10-14 18:13:30] 完成：/tmp/locklab-kes-run/kes_locklab_20261014_181222.log

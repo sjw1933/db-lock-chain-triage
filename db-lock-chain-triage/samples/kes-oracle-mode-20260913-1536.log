@@ -1,0 +1,15 @@
+实例在一个会话等锁超过阈值后写一条 `still waiting for`，之后约每 30 秒重复记一次。下面每个等待进程取第一条和最近一条。
+2026-09-13 15:27:16.375 CST [1005031] LOG:  process 1005031 still waiting for ShareLock on transaction 1668 after 31000.677 ms
+2026-09-13 15:27:16.375 CST [1005031] DETAIL:  Process holding the lock: 1004761. Wait queue: 1005031.
+2026-09-13 15:27:16.375 CST [1005031] CONTEXT:  while updating tuple (0,2) in relation "orders"
+2026-09-13 15:27:16.375 CST [1005031] STATEMENT:  update yanshi.orders set status = 'paying' where order_no = 'SO-2026-0002';
+2026-09-13 15:36:16.715 CST [1005031] LOG:  process 1005031 still waiting for ShareLock on transaction 1668 after 571340.369 ms
+2026-09-13 15:36:16.715 CST [1005031] DETAIL:  Process holding the lock: 1004761. Wait queue: 1005031.
+2026-09-13 15:36:16.715 CST [1005031] CONTEXT:  while updating tuple (0,2) in relation "orders"
+2026-09-13 15:36:16.715 CST [1005031] STATEMENT:  update yanshi.orders set status = 'paying' where order_no = 'SO-2026-0002';
+2026-09-13 15:27:48.183 CST [1005115] LOG:  process 1005115 still waiting for ExclusiveLock on tuple (0,2) of relation 18949 of database 13994 after 31021.863 ms
+2026-09-13 15:27:48.183 CST [1005115] DETAIL:  Process holding the lock: 1005031. Wait queue: 1005115.
+2026-09-13 15:27:48.183 CST [1005115] STATEMENT:  update yanshi.orders set status = 'paid' where order_no = 'SO-2026-0002';
+2026-09-13 15:36:18.453 CST [1005115] LOG:  process 1005115 still waiting for ExclusiveLock on tuple (0,2) of relation 18949 of database 13994 after 541291.546 ms
+2026-09-13 15:36:18.453 CST [1005115] DETAIL:  Process holding the lock: 1005031. Wait queue: 1005115.
+2026-09-13 15:36:18.453 CST [1005115] STATEMENT:  update yanshi.orders set status = 'paid' where order_no = 'SO-2026-0002';

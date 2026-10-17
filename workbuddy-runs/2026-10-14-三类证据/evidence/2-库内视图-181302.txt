@@ -1,0 +1,23 @@
+ waiting_lock_count 
+--------------------
+                  2
+(1 row)
+
+ blocked_pid | blocked_app |                    blocked_query                     | blocking_pid | blocking_app |                    blocking_query                    
+-------------+-------------+------------------------------------------------------+--------------+--------------+------------------------------------------------------
+      658918 | locklab-B   | update locklab_orders set status = 'B' where id = 1; |       658916 | locklab-A    | update locklab_orders set status = 'A' where id = 1;
+      658917 | locklab-C   | update locklab_orders set status = 'C' where id = 1; |       658918 | locklab-B    | update locklab_orders set status = 'B' where id = 1;
+(2 rows)
+
+  pid   | application_name |        state        |         xact_duration         | wait_event_type |  wait_event   |                        query                         
+--------+------------------+---------------------+-------------------------------+-----------------+---------------+------------------------------------------------------
+ 658916 | locklab-A        | idle in transaction | +000000000 00:00:40.049697000 | Client          | ClientRead    | update locklab_orders set status = 'A' where id = 1;
+ 658918 | locklab-B        | active              | +000000000 00:00:38.062414000 | Lock            | transactionid | update locklab_orders set status = 'B' where id = 1;
+ 658917 | locklab-C        | active              | +000000000 00:00:36.060645000 | Lock            | tuple         | update locklab_orders set status = 'C' where id = 1;
+(3 rows)
+
+        state        | connections 
+---------------------+-------------
+ active              |           3
+ idle in transaction |           1
+(2 rows)

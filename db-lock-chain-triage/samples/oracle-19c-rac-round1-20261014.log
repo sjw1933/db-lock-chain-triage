@@ -1,0 +1,208 @@
+[2026-10-14 17:41:09] == 环境
+
+BANNER
+--------------------------------------------------------------------------------
+Oracle Database 19c Enterprise Edition Release 19.0.0.0.0 - Production
+
+INSTANCE_NAME	 HOST_NAME							  VERSION	    STATUS
+---------------- ---------------------------------------------------------------- ----------------- ------------
+orcl1		 rac1								  19.0.0.0.0	    OPEN
+
+NAME	  OPEN_MODE	       DATABASE_ROLE
+--------- -------------------- ----------------
+ORCL	  READ WRITE	       PRIMARY
+
+USERNAME
+--------------------------------------------------------------------------------------------------------------------------------
+TEST01
+[2026-10-14 17:41:11] == 建实验表 TEST01.LOCK_LAB_ORDERS
+[2026-10-14 17:41:12] == 场景一：不同行串成的链  A(行1) <- B(持行2, 等行1) <- C(等行2)
+[2026-10-14 17:41:24] -- gv$session（实验会话）
+
+CLIENT_IDENT	INST_ID        SID    SERIAL# STATUS   STATE		  EVENT 			   BLOCKING_INSTANCE BLOCKING_SESSION FINAL_BLOCKING_INSTANCE FINAL_BLOCKING_SESSION SECONDS_IN_WAIT
+------------ ---------- ---------- ---------- -------- ------------------ -------------------------------- ----------------- ---------------- ----------------------- ---------------------- ---------------
+locklab-A	      1        827	28217 INACTIVE WAITING		  SQL*Net message from client													  12
+locklab-B	      1        762	 7362 ACTIVE   WAITING		  enq: TX - row lock contention 												  10
+locklab-C	      1        814	62599 ACTIVE   WAITING		  enq: TX - row lock contention 												   8
+[2026-10-14 17:41:25] -- v$wait_chains
+
+  INSTANCE	  SID SESS_SERIAL# BLOCKER_INSTANCE BLOCKER_SID BLOCK NUM_WAITERS WAIT_EVENT_TEXT		   IN_WAIT_SECS
+---------- ---------- ------------ ---------------- ----------- ----- ----------- -------------------------------- ------------
+	 2	   33	     55881				FALSE		0
+	 2	   53	     59997				FALSE		0 REPL Capture/Apply: RAC AQ qmn c	     16
+										  oordinator
+
+	 1	   64	     21748				FALSE		0 PX Deq: Join ACK			      0
+	 1	  812	      6246				FALSE		0 REPL Capture/Apply: RAC AQ qmn c	     25
+										  oordinator
+
+	 1	  823	     61489				FALSE		0 PX Deq: Execution Msg 		      0
+	 1	  827	     28217				FALSE		2 SQL*Net message from client		     11
+	 1	  762	      7362		  1	    827 TRUE		1 enq: TX - row lock contention 	     10
+	 1	  814	     62599		  1	    762 TRUE		0 enq: TX - row lock contention 	      8
+[2026-10-14 17:41:26] -- dbatool lsblk
+
+NAME
+---------
+ORCL
+
+INST_ID EVENT			       COUNT(*)
+------- ------------------------------ --------
+      1 SQL*Net message to client	      1
+      1 enq: TX - row lock contention	      2
+
+INSTANCE SID		 SERIAL SQL_ID	      EVENT
+-------- --------------- ------ ------------- ------------------------------
+       1 827		  28217 	      SQL*Net message from client
+       1   762		   7362 f2v1jdr3faxm4 enq: TX - row lock contention
+       1     814	  62599 2v4ttgakxstpw enq: TX - row lock contention
+
+KILL
+------------------------------------------------------------
+alter system kill session '827,28217,@1' immediate;
+[2026-10-14 17:41:28] -- dbatool lstx
+
+NAME
+---------
+ORCL
+
+INST_ID EVENT			       COUNT(*)
+------- ------------------------------ --------
+      1 enq: TX - row lock contention	      2
+    w.sid AS wait_sid,
+     *
+ERROR at line 3:
+ORA-12850: Could not allocate slaves on all specified instances: 2 needed, 1 allocated
+
+
+[2026-10-14 17:41:36] -- 会话已全部 rollback 退出
+
+	ID STATUS
+---------- --------------------
+	 1 new
+	 2 new
+[2026-10-14 17:41:37] == 场景二：同一行排队  A(行1) <- B(等行1) <- C(等行1)
+[2026-10-14 17:41:49] -- gv$session（实验会话）
+
+CLIENT_IDENT	INST_ID        SID    SERIAL# STATUS   STATE		  EVENT 			   BLOCKING_INSTANCE BLOCKING_SESSION FINAL_BLOCKING_INSTANCE FINAL_BLOCKING_SESSION SECONDS_IN_WAIT
+------------ ---------- ---------- ---------- -------- ------------------ -------------------------------- ----------------- ---------------- ----------------------- ---------------------- ---------------
+locklab-A	      1        823	26411 INACTIVE WAITING		  SQL*Net message from client													  12
+locklab-B	      1        814	 7119 ACTIVE   WAITING		  enq: TX - row lock contention 		   1		  823			    1			 823		  10
+locklab-C	      1        827	59966 ACTIVE   WAITING		  enq: TX - row lock contention 		   1		  823			    1			 823		   8
+[2026-10-14 17:41:50] -- v$wait_chains
+
+  INSTANCE	  SID SESS_SERIAL# BLOCKER_INSTANCE BLOCKER_SID BLOCK NUM_WAITERS WAIT_EVENT_TEXT		   IN_WAIT_SECS
+---------- ---------- ------------ ---------------- ----------- ----- ----------- -------------------------------- ------------
+	 2	   53	     59997				FALSE		0 REPL Capture/Apply: RAC AQ qmn c	     40
+										  oordinator
+
+	 1	  778	     58714				FALSE		1 log file parallel write		      0
+	 1	  779	     21966				FALSE		0 LGWR worker group idle		    186
+	 1	  812	      6246				FALSE		0 REPL Capture/Apply: RAC AQ qmn c	     50
+										  oordinator
+
+	 1	  823	     26411				FALSE		2 SQL*Net message from client		     11
+	 1	  777	     23179		  1	    778 TRUE		0 LGWR all worker groups		      0
+	 1	  814	      7119		  1	    823 TRUE		0 enq: TX - row lock contention 	      9
+	 1	  827	     59966		  1	    823 TRUE		0 enq: TX - row lock contention 	      7
+[2026-10-14 17:41:51] -- dbatool lsblk
+
+NAME
+---------
+ORCL
+
+INST_ID EVENT			       COUNT(*)
+------- ------------------------------ --------
+      1 enq: TX - row lock contention	      2
+
+INSTANCE SID		 SERIAL SQL_ID	      EVENT
+-------- --------------- ------ ------------- ------------------------------
+       1 778		  58714 	      LGWR worker group idle
+       1   777		  23179 	      rdbms ipc message
+       1 823		  26411 	      SQL*Net message from client
+       1   814		   7119 f2v1jdr3faxm4 enq: TX - row lock contention
+       1   827		  59966 cf5pqd0s2rbj2 enq: TX - row lock contention
+
+KILL
+------------------------------------------------------------
+alter system kill session '823,26411,@1' immediate;
+[2026-10-14 17:41:52] -- dbatool lstx
+
+NAME
+---------
+ORCL
+
+INST_ID EVENT			       COUNT(*)
+------- ------------------------------ --------
+      1 enq: TX - row lock contention	      2
+    w.sid AS wait_sid,
+     *
+ERROR at line 3:
+ORA-12850: Could not allocate slaves on all specified instances: 2 needed, 1 allocated
+
+
+[2026-10-14 17:42:00] -- 会话已全部 rollback 退出
+
+	ID STATUS
+---------- --------------------
+	 1 new
+	 2 new
+[2026-10-14 17:42:01] == 清理
+
+PL/SQL procedure successfully completed.
+
+
+1 row updated.
+
+
+Rollback complete.
+
+
+PL/SQL procedure successfully completed.
+
+
+1 row updated.
+
+
+Rollback complete.
+
+
+PL/SQL procedure successfully completed.
+
+
+1 row updated.
+
+
+1 row updated.
+
+
+Rollback complete.
+
+
+PL/SQL procedure successfully completed.
+
+
+1 row updated.
+
+
+Rollback complete.
+
+
+PL/SQL procedure successfully completed.
+
+
+1 row updated.
+
+
+Rollback complete.
+
+
+PL/SQL procedure successfully completed.
+
+
+1 row updated.
+
+
+Rollback complete.
+
+[2026-10-14 17:42:03] 完成，完整输出在 locklab_20261014_174109.log
