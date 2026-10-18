@@ -1,0 +1,22 @@
+订单支付又卡住了，帮我看看谁堵住了谁、该怎么处理。实例是 KingbaseES V009R002C014，Oracle 兼容模式。下面是 18:13:02 同一时刻采集的三类证据。
+【主机进程表】PID ELAPSED COMMAND
+658916 00:40 kingbase: system test 127.0.0.1(17956) idle in transaction
+658917 00:40 kingbase: system test 127.0.0.1(17972) UPDATE waiting
+658918 00:40 kingbase: system test 127.0.0.1(17974) UPDATE waiting
+【库内视图·等锁数】waiting_lock_count = 2
+【库内视图·阻塞对】blocked_pid | blocked_app | blocked_query | blocking_pid | blocking_app | blocking_query
+658918 | locklab-B | update locklab_orders set status = 'B' where id = 1; | 658916 | locklab-A | update locklab_orders set status = 'A' where id = 1;
+658917 | locklab-C | update locklab_orders set status = 'C' where id = 1; | 658918 | locklab-B | update locklab_orders set status = 'B' where id = 1;
+【库内视图·未结束事务】pid | application_name | state | xact_duration | wait_event_type | wait_event | query
+658916 | locklab-A | idle in transaction | 00:00:40.05 | Client | ClientRead | update locklab_orders set status = 'A' where id = 1;
+658918 | locklab-B | active | 00:00:38.06 | Lock | transactionid | update locklab_orders set status = 'B' where id = 1;
+658917 | locklab-C | active | 00:00:36.06 | Lock | tuple | update locklab_orders set status = 'C' where id = 1;
+【库内视图·连接分布】active 3；idle in transaction 1
+【服务器日志】
+2026-10-14 18:12:55.802 CST [658918] LOG:  process 658918 still waiting for ShareLock on transaction 1674 after 31001.489 ms
+2026-10-14 18:12:55.802 CST [658918] DETAIL:  Process holding the lock: 658916. Wait queue: 658918.
+2026-10-14 18:12:55.802 CST [658918] CONTEXT:  while updating tuple (0,1) in relation "locklab_orders"
+2026-10-14 18:12:55.802 CST [658918] STATEMENT:  update locklab_orders set status = 'B' where id = 1;
+2026-10-14 18:12:57.827 CST [658917] LOG:  process 658917 still waiting for ExclusiveLock on tuple (0,1) of relation 19034 of database 13994 after 31025.025 ms
+2026-10-14 18:12:57.827 CST [658917] DETAIL:  Process holding the lock: 658918. Wait queue: 658917.
+2026-10-14 18:12:57.827 CST [658917] STATEMENT:  update locklab_orders set status = 'C' where id = 1;
