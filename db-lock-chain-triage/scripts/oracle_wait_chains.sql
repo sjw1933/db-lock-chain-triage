@@ -1,5 +1,5 @@
 -- db-lock-chain-triage：Oracle 阻塞链（只读）
--- 取自 dbatool lsblk，Oracle 19c RAC 实测可用。
+-- 取自作者生产排障在用的 Oracle 运维脚本（bash 版与 Go 版 dbatool）的 lsblk，Oracle 19c RAC 实测可用。
 -- 只打印 kill 语句，不执行；是否执行由 DBA 决定。
 set linesize 500 pagesize 999 numwidth 5
 col event for a30

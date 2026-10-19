@@ -5,7 +5,7 @@
 
 ## 拼链用 v$wait_chains
 
-SQL 取自 dbatool 的 lsblk 子命令（作者自用的 Oracle 运维工具，bash 脚本的 Go 重写版），见 `scripts/oracle_wait_chains.sql`。要点：
+SQL 取自作者生产排障在用的 Oracle 运维脚本的 lsblk 子命令（脚本有 bash 和 Go 两个版本，Go 版叫 dbatool，生产环境两个版本都在用，阻塞链部分 SQL 相同；本文实验跑的是 Go 版），见 `scripts/oracle_wait_chains.sql`。要点：
 
 - `start with blocker_is_valid = 'FALSE'`：从不再等别人的会话开始往下展开，也就是从链头开始
 - `CONNECT_BY_ROOT(sid)`：每个等待者都能直接拿到自己所属链的链头

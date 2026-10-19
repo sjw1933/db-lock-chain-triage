@@ -53,7 +53,7 @@ python3 db-lock-chain-triage/scripts/lock_log_chain.py db-lock-chain-triage/samp
 |---|---|---|
 | KingbaseES | V009R002C014（Oracle 兼容模式） | 同一行三段锁链复现，三类证据同时采集，结束不同会话后的对照 |
 | KingbaseES | Oracle / MySQL 兼容模式 | 巡检 SQL 14 项实测 |
-| Oracle | 19c EE 双节点 RAC | 不同行链与同一行排队两种链形，v$wait_chains 拼链，kill 名单对照 |
+| Oracle | 19c EE 双节点 RAC | 不同行链与同一行排队两种链形，v$wait_chains 拼链，kill 名单对照；lsblk / lstx 来自作者生产排障在用的运维脚本（bash 与 Go 两版） |
 
 ## 安全边界
 
