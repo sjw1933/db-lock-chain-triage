@@ -4,7 +4,7 @@
 
 目录约定和 CloudQ、WorkBuddy 的 Skill 一致（SKILL.md + references + scripts），在 KingbaseES 和 Oracle 19c RAC 上做过实测，并在 WorkBuddy 和 CloudQ 中挂载调用过。
 
-配套文章：《锁等待先找链头：把 DBA 排阻塞的判断写成一个 Skill》（腾讯云架构师技术同盟 · AIOps 最佳实践 · CloudQ 共创计划征文）。
+配套文章：《锁等待先找链头：一个 DBA Skill 在 WorkBuddy 和 CloudQ 里的实测》（腾讯云架构师技术同盟 · AIOps 最佳实践 · CloudQ 共创计划征文）。
 
 ## 目录
 
